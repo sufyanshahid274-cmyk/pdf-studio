@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Studio — Reader & Editor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f11;--surf:#18181c;--surf2:#222228;--surf3:#2e2e36;
+  --bdr:rgba(255,255,255,0.08);--bdr2:rgba(255,255,255,0.15);
+  --acc:#e85d3a;--acc2:#ff7a57;
+  --tx:#f0ede8;--tx2:#9995a0;--tx3:#5a5660;
+}
+html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);overflow:hidden}
+
+/* APP GRID */
+.app{display:grid;grid-template-rows:50px 46px 1fr 26px;height:100vh}
+
+/* TITLEBAR */
+.titlebar{display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--surf);border-bottom:1px solid var(--bdr)}
+.logo-box{width:26px;height:26px;background:var(--acc);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;font-weight:500;color:#fff;flex-shrink:0}
+.logo-txt{font-size:13px;font-weight:600;letter-spacing:-.3px}
+.logo-txt b{color:var(--acc)}
+.file-name{font-size:11px;color:var(--tx3);font-family:'DM Mono',monospace;margin-left:4px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.title-right{margin-left:auto;display:flex;gap:5px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:0 12px;height:28px;border-radius:5px;border:1px solid var(--bdr2);background:transparent;color:var(--tx);font-family:'Inter',sans-serif;font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surf3)}
+.btn.acc{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.acc:hover{background:var(--acc2)}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;gap:2px;padding:0 10px;background:var(--surf);border-bottom:1px solid var(--bdr);overflow-x:auto;flex-shrink:0}
+.toolbar::-webkit-scrollbar{display:none}
+.sep{width:1px;height:18px;background:var(--bdr2);margin:0 4px;flex-shrink:0}
+.tbtn{display:flex;align-items:center;gap:4px;padding:0 8px;height:30px;border-radius:5px;border:none;background:transparent;color:var(--tx2);font-size:11px;font-family:'Inter',sans-serif;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.tbtn:hover{background:var(--surf3);color:var(--tx)}
+.tbtn.on{background:rgba(232,93,58,.2);color:var(--acc)}
+.tbtn svg{flex-shrink:0}
+/* font controls */
+.fc-sel{height:24px;background:var(--surf2);border:1px solid var(--bdr2);border-radius:4px;color:var(--tx);font-size:11px;padding:0 5px;cursor:pointer;flex-shrink:0;font-family:'Inter',sans-serif}
+.fc-num{width:42px;height:24px;background:var(--surf2);border:1px solid var(--bdr2);border-radius:4px;color:var(--tx);font-size:11px;padding:0 5px;text-align:center;flex-shrink:0;font-family:'DM Mono',monospace}
+.fc-clr{width:24px;height:24px;border-radius:4px;border:1px solid var(--bdr2);padding:2px;cursor:pointer;background:transparent;flex-shrink:0}
+.fc-sel:focus,.fc-num:focus{outline:none;border-color:var(--acc)}
+.zm-grp{display:flex;align-items:center;gap:3px;margin-left:auto;flex-shrink:0}
+.zm-val{font-family:'DM Mono',monospace;font-size:11px;color:var(--tx2);min-width:38px;text-align:center}
+
+/* MAIN 3-COL */
+.main{display:grid;grid-template-columns:185px 1fr 205px;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{background:var(--surf);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden}
+.stabs{display:flex;border-bottom:1px solid var(--bdr)}
+.stab{flex:1;height:32px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--tx3);border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.stab.on{color:var(--acc);border-bottom:2px solid var(--acc)}
+.sbody{flex:1;overflow-y:auto;padding:8px}
+.sbody::-webkit-scrollbar{width:3px}
+.sbody::-webkit-scrollbar-thumb{background:var(--surf3);border-radius:2px}
+.tp{display:none}.tp.on{display:block}
+/* thumbnails */
+.thi{border-radius:5px;overflow:hidden;cursor:pointer;margin-bottom:7px;border:2px solid transparent;transition:all .15s}
+.thi:hover{border-color:var(--bdr2)}
+.thi.on{border-color:var(--acc)}
+.thc{width:100%;display:block;background:#fff}
+.thn{text-align:center;font-size:9px;color:var(--tx3);font-family:'DM Mono',monospace;padding:2px 0}
+/* search */
+.sbox{width:100%;background:var(--surf2);border:1px solid var(--bdr2);border-radius:5px;padding:5px 8px;color:var(--tx);font-size:11px;outline:none;margin-bottom:6px;font-family:'Inter',sans-serif}
+.sbox:focus{border-color:var(--acc)}
+.sres{padding:4px 0;cursor:pointer;border-bottom:1px solid var(--bdr);color:var(--tx);font-size:10px}
+.sres:hover{color:var(--acc)}
+
+/* VIEWER */
+.viewer{background:#1a1a1f;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:20px 0;gap:16px;position:relative}
+.viewer::-webkit-scrollbar{width:5px}
+.viewer::-webkit-scrollbar-thumb{background:var(--surf3);border-radius:3px}
+
+/* PAGE WRAPPER */
+.pw{position:relative;box-shadow:0 6px 32px rgba(0,0,0,.6);border-radius:2px;display:inline-block}
+.pw canvas{display:block;border-radius:2px}
+
+/* DRAW OVERLAY */
+.dov{position:absolute;top:0;left:0;pointer-events:none;z-index:3;border-radius:2px}
+.dov.can-draw{pointer-events:all;cursor:crosshair}
+
+/* EDIT OVERLAY — for text/image/shape elements */
+.eov{position:absolute;top:0;left:0;z-index:4;border-radius:2px;overflow:visible}
+.eov.can-click{pointer-events:all}
+
+/* ===== TEXT ELEMENT ===== */
+.tel{position:absolute;cursor:move;z-index:10;min-width:80px;min-height:28px;user-select:none}
+.tel:hover .tel-border{border-color:rgba(232,93,58,.5)}
+.tel.sel .tel-border{border-color:var(--acc)!important}
+.tel-border{border:1.5px dashed transparent;border-radius:3px;width:100%;height:100%;position:relative}
+.tel-content{
+  min-height:28px;width:100%;padding:4px 6px;
+  background:transparent;border:none;outline:none;
+  resize:none;overflow:hidden;
+  font-family:Arial,sans-serif;font-size:16px;color:#000;
+  line-height:1.5;white-space:pre-wrap;word-break:break-word;
+  cursor:text;display:block;
+}
+.tel.sel .tel-content{cursor:text}
+.tel-rh{position:absolute;width:9px;height:9px;background:var(--acc);border:1.5px solid #fff;border-radius:2px;bottom:-5px;right:-5px;cursor:se-resize;z-index:20;display:none}
+.tel.sel .tel-rh{display:block}
+.tel-del{position:absolute;top:-9px;right:-9px;width:18px;height:18px;background:#e24b4a;border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;font-size:12px;cursor:pointer;z-index:25;line-height:1;border:none}
+.tel.sel .tel-del{display:flex}
+
+/* ===== IMAGE ELEMENT ===== */
+.iel{position:absolute;cursor:move;z-index:10;user-select:none;min-width:40px;min-height:30px}
+.iel.sel{outline:2px solid var(--acc);outline-offset:1px}
+.iel img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}
+.iel-rh{position:absolute;width:9px;height:9px;background:var(--acc);border:1.5px solid #fff;border-radius:2px;bottom:-5px;right:-5px;cursor:se-resize;z-index:20;display:none}
+.iel.sel .iel-rh{display:block}
+.iel-del{position:absolute;top:-9px;right:-9px;width:18px;height:18px;background:#e24b4a;border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;font-size:12px;cursor:pointer;z-index:25;border:none}
+.iel.sel .iel-del{display:flex}
+
+/* ===== SHAPE ELEMENT ===== */
+.shel{position:absolute;cursor:move;z-index:9;user-select:none}
+.shel.sel{outline:2px dashed var(--acc)}
+.shel-rh{position:absolute;width:9px;height:9px;background:var(--acc);border:1.5px solid #fff;border-radius:2px;bottom:-5px;right:-5px;cursor:se-resize;z-index:20;display:none}
+.shel.sel .shel-rh{display:block}
+.shel-del{position:absolute;top:-9px;right:-9px;width:18px;height:18px;background:#e24b4a;border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;font-size:12px;cursor:pointer;z-index:25;border:none}
+.shel.sel .shel-del{display:flex}
+
+/* ===== STICKY NOTE ===== */
+.sn{position:absolute;width:140px;background:#fff9c4;border:1px solid #e8cc50;border-radius:4px;padding:5px 7px;box-shadow:2px 3px 8px rgba(0,0,0,.3);cursor:move;z-index:15;pointer-events:all}
+.sn textarea{width:100%;background:transparent;border:none;resize:none;font-size:10px;font-family:'Inter',sans-serif;color:#444;outline:none}
+.sn-x{position:absolute;top:2px;right:4px;cursor:pointer;color:#aaa;font-size:13px;line-height:1;background:none;border:none}
+
+/* RIGHT PANEL */
+.rp{background:var(--surf);border-left:1px solid var(--bdr);overflow-y:auto;padding:10px 9px;display:flex;flex-direction:column;gap:12px}
+.rp::-webkit-scrollbar{width:3px}
+.rp::-webkit-scrollbar-thumb{background:var(--surf3);border-radius:2px}
+.rpt{font-size:9px;font-weight:600;letter-spacing:.08em;color:var(--tx3);text-transform:uppercase;margin-bottom:6px}
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.rt{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;border-radius:6px;border:1px solid var(--bdr);background:var(--surf2);cursor:pointer;font-size:9px;color:var(--tx2);transition:all .15s;text-align:center}
+.rt:hover{border-color:var(--bdr2);color:var(--tx);background:var(--surf3)}
+.rt.on{border-color:var(--acc);color:var(--acc);background:rgba(232,93,58,.1)}
+/* text props */
+.pr{display:flex;gap:4px;align-items:center;margin-bottom:5px}
+.pl{font-size:9px;color:var(--tx3);min-width:32px}
+.psel{flex:1;height:24px;background:var(--surf2);border:1px solid var(--bdr2);border-radius:4px;color:var(--tx);font-size:10px;padding:0 4px;font-family:'Inter',sans-serif}
+.psel:focus{outline:none;border-color:var(--acc)}
+.pnum{width:44px;height:24px;background:var(--surf2);border:1px solid var(--bdr2);border-radius:4px;color:var(--tx);font-size:10px;padding:0 4px;font-family:'DM Mono',monospace;text-align:center}
+.pnum:focus{outline:none;border-color:var(--acc)}
+.fbtns{display:flex;gap:3px}
+.fb{height:24px;padding:0 7px;background:var(--surf2);border:1px solid var(--bdr2);border-radius:4px;color:var(--tx2);font-size:11px;cursor:pointer;transition:all .15s}
+.fb:hover{color:var(--tx)}
+.fb.on{background:rgba(232,93,58,.15);border-color:var(--acc);color:var(--acc)}
+/* colors */
+.crow{display:flex;gap:4px;flex-wrap:wrap}
+.cd{width:19px;height:19px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s}
+.cd.on{border-color:#fff;transform:scale(1.2)}
+/* info */
+.ir{display:flex;justify-content:space-between;font-size:10px;padding:2px 0}
+.ir span:first-child{color:var(--tx3)}
+.ir span:last-child{font-family:'DM Mono',monospace;color:var(--tx2)}
+/* layers */
+.lr{display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:4px;background:var(--surf2);font-size:10px;color:var(--tx2);cursor:pointer;margin-bottom:3px}
+.lr:hover{background:var(--surf3)}
+.lx{color:var(--acc);cursor:pointer;font-size:12px;background:none;border:none;padding:0}
+
+/* DROP ZONE */
+.dz{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.dzb{width:290px;border:2px dashed var(--bdr2);border-radius:12px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s}
+.dzb:hover,.dzb.drag{border-color:var(--acc);background:rgba(232,93,58,.05)}
+.dzi{margin:0 auto 12px;width:48px;height:48px;border-radius:12px;background:rgba(232,93,58,.15);display:flex;align-items:center;justify-content:center}
+.dzt{font-size:14px;font-weight:600;margin-bottom:4px}
+.dzs{font-size:11px;color:var(--tx2)}
+.dztry{font-size:11px;color:var(--acc);margin-top:6px;cursor:pointer;text-decoration:underline}
+
+/* LOADING */
+.lov{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:100}
+.pb{width:200px;height:3px;background:var(--surf3);border-radius:2px;overflow:hidden}
+.pf{height:100%;background:var(--acc);border-radius:2px;transition:width .3s}
+.lt{font-size:11px;color:var(--tx2)}
+
+/* MODALS */
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:200}
+.mbox{background:var(--surf);border:1px solid var(--bdr2);border-radius:12px;padding:18px;width:380px;max-width:95vw}
+.mtit{font-size:14px;font-weight:600;margin-bottom:12px}
+.mact{display:flex;gap:6px;margin-top:12px}
+.mact .btn{flex:1;justify-content:center}
+.sigc{width:100%;height:130px;background:#fff;border-radius:5px;cursor:crosshair;display:block}
+
+/* STATUSBAR */
+.sb{display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:var(--surf);border-top:1px solid var(--bdr);font-size:10px;color:var(--tx3);font-family:'DM Mono',monospace}
+.sbd{width:5px;height:5px;border-radius:50%;background:#4caf7d;display:inline-block;margin-right:5px}
+
+/* TOAST */
+.toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--surf2);border:1px solid var(--bdr2);border-radius:7px;padding:8px 14px;font-size:12px;color:var(--tx);opacity:0;pointer-events:none;transition:all .25s;z-index:500;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TITLEBAR -->
+<div class="titlebar">
+  <div class="logo-box">PDF</div>
+  <span class="logo-txt">PDF <b>Studio</b></span>
+  <span class="file-name" id="fileName">No file open</span>
+  <div class="title-right">
+    <button class="btn" onclick="triggerOpen()">📂 Open PDF</button>
+    <button class="btn" onclick="downloadEdited()">⬇ Download</button>
+    <button class="btn acc" onclick="printPDF()">🖨 Print</button>
+  </div>
+  <input type="file" id="fileInput" accept=".pdf" style="display:none" onchange="loadFile(this)">
+  <input type="file" id="imgInput" accept="image/*" style="display:none" onchange="insertImgFile(this)">
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <button class="tbtn on" id="tbsel" onclick="setTool('select')">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-7 1-4 6z"/></svg> Select
+  </button>
+  <div class="sep"></div>
+
+  <!-- TEXT TOOL - most important -->
+  <button class="tbtn" id="tbtext" onclick="setTool('text')">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg> Add Text
+  </button>
+
+  <button class="tbtn" id="tbdraw" onclick="setTool('draw')">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5z"/></svg> Draw
+  </button>
+  <button class="tbtn" id="tbnote" onclick="setTool('note')">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Note
+  </button>
+  <button class="tbtn" id="tbshape" onclick="setTool('shape')">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg> Shape
+  </button>
+  <button class="tbtn" onclick="document.getElementById('imgInput').click()">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> Image
+  </button>
+  <button class="tbtn" onclick="openSig()">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17c3-3 5-5 8-2s5 1 8-2"/></svg> Sign
+  </button>
+  <div class="sep"></div>
+
+  <!-- FONT CONTROLS -->
+  <select class="fc-sel" id="fcfont" onchange="applyFmt()" title="Font family">
+    <option value="Arial">Arial</option>
+    <option value="Times New Roman">Times New Roman</option>
+    <option value="Georgia">Georgia</option>
+    <option value="Courier New">Courier New</option>
+    <option value="Verdana">Verdana</option>
+    <option value="Trebuchet MS">Trebuchet MS</option>
+    <option value="Comic Sans MS">Comic Sans MS</option>
+    <option value="Impact">Impact</option>
+  </select>
+  <input class="fc-num" id="fcsize" type="number" value="18" min="6" max="200" onchange="applyFmt()" title="Font size">
+  <input class="fc-clr" id="fcclr" type="color" value="#000000" onchange="applyFmt()" title="Text color">
+  <button class="tbtn" id="fcB" onclick="toggleFmt('B')" style="font-weight:700;min-width:26px;padding:0 4px" title="Bold">B</button>
+  <button class="tbtn" id="fcI" onclick="toggleFmt('I')" style="font-style:italic;min-width:26px;padding:0 4px" title="Italic">I</button>
+  <button class="tbtn" id="fcU" onclick="toggleFmt('U')" style="text-decoration:underline;min-width:26px;padding:0 4px" title="Underline">U</button>
+  <div class="sep"></div>
+
+  <!-- ZOOM -->
+  <div class="zm-grp">
+    <button class="tbtn" onclick="doZoom(-0.15)" style="padding:0 4px" title="Zoom out">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+    <span class="zm-val" id="zmval">100%</span>
+    <button class="tbtn" onclick="doZoom(0.15)" style="padding:0 4px" title="Zoom in">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="stabs">
+      <button class="stab on" onclick="setSTab('pages',this)">Pages</button>
+      <button class="stab" onclick="setSTab('search',this)">Search</button>
+      <button class="stab" onclick="setSTab('layers',this)">Layers</button>
+    </div>
+    <div class="sbody">
+      <div class="tp on" id="tp-pages"><div id="thumbs"></div></div>
+      <div class="tp" id="tp-search">
+        <input class="sbox" type="text" placeholder="Search in PDF…" oninput="doSearch(this.value)">
+        <div id="sresults"></div>
+      </div>
+      <div class="tp" id="tp-layers">
+        <div style="font-size:10px;color:var(--tx2);margin-bottom:6px">Elements on page:</div>
+        <div id="laylist"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEWER -->
+  <div class="viewer" id="viewer">
+    <div class="dz" id="dz">
+      <div class="dzb" id="dzb" onclick="triggerOpen()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+        <div class="dzi">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e85d3a" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        </div>
+        <div class="dzt">Open a PDF file</div>
+        <div class="dzs">Click to browse or drag &amp; drop</div>
+        <div class="dztry" onclick="event.stopPropagation();loadSample()">Try sample PDF →</div>
+      </div>
+    </div>
+    <div class="lov" id="lov" style="display:none">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <div class="pb"><div class="pf" id="pf" style="width:0%"></div></div>
+      <div class="lt" id="lt">Loading…</div>
+    </div>
+    <div id="pages" style="display:flex;flex-direction:column;gap:16px;align-items:center;"></div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="rp">
+
+    <div>
+      <div class="rpt">Insert & Edit</div>
+      <div class="tgrid">
+        <div class="rt" onclick="setTool('text')" id="rt-text">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e85d3a" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+          Add Text
+        </div>
+        <div class="rt" onclick="document.getElementById('imgInput').click()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#378ADD" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Image
+        </div>
+        <div class="rt" onclick="setTool('shape')" id="rt-shape">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4caf7d" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          Shape
+        </div>
+        <div class="rt" onclick="setTool('draw')" id="rt-draw">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#BA7517" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5z"/></svg>
+          Freehand
+        </div>
+        <div class="rt" onclick="openSig()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9f7de8" stroke-width="2"><path d="M3 17c3-3 5-5 8-2s5 1 8-2"/></svg>
+          Signature
+        </div>
+        <div class="rt" onclick="setTool('note')" id="rt-note">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#639922" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Note
+        </div>
+      </div>
+    </div>
+
+    <!-- TEXT PROPERTIES -->
+    <div>
+      <div class="rpt">Text Properties</div>
+      <div class="pr">
+        <span class="pl">Font</span>
+        <select class="psel" id="rpfont" onchange="applyFmt()">
+          <option value="Arial">Arial</option>
+          <option value="Times New Roman">Times New Roman</option>
+          <option value="Georgia">Georgia</option>
+          <option value="Courier New">Courier New</option>
+          <option value="Verdana">Verdana</option>
+          <option value="Impact">Impact</option>
+        </select>
+      </div>
+      <div class="pr">
+        <span class="pl">Size</span>
+        <input class="pnum" id="rpsize" type="number" value="18" min="6" max="200" onchange="applyFmt()">
+        <input type="color" id="rpclr" value="#000000" onchange="applyFmt()" style="width:26px;height:24px;border-radius:4px;border:1px solid var(--bdr2);cursor:pointer;padding:2px;background:transparent;margin-left:3px">
+      </div>
+      <div class="pr">
+        <span class="pl">Style</span>
+        <div class="fbtns">
+          <button class="fb" id="rpB" onclick="toggleFmt('B')"><b>B</b></button>
+          <button class="fb" id="rpI" onclick="toggleFmt('I')"><i>I</i></button>
+          <button class="fb" id="rpU" onclick="toggleFmt('U')"><u>U</u></button>
+        </div>
+      </div>
+      <div class="pr">
+        <span class="pl">Align</span>
+        <div class="fbtns">
+          <button class="fb" id="rpAL" onclick="setAlign('left')">L</button>
+          <button class="fb" id="rpAC" onclick="setAlign('center')">C</button>
+          <button class="fb" id="rpAR" onclick="setAlign('right')">R</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STROKE COLOR -->
+    <div>
+      <div class="rpt">Draw / Shape Color</div>
+      <div class="crow" id="crow">
+        <div class="cd on" style="background:#e85d3a" onclick="setStroke('#e85d3a',this)"></div>
+        <div class="cd" style="background:#000000" onclick="setStroke('#000000',this)"></div>
+        <div class="cd" style="background:#FFD752" onclick="setStroke('#FFD752',this)"></div>
+        <div class="cd" style="background:#4ecb71" onclick="setStroke('#4ecb71',this)"></div>
+        <div class="cd" style="background:#4da6ff" onclick="setStroke('#4da6ff',this)"></div>
+        <div class="cd" style="background:#ff9f40" onclick="setStroke('#ff9f40',this)"></div>
+        <div class="cd" style="background:#c678dd" onclick="setStroke('#c678dd',this)"></div>
+        <div class="cd" style="background:#ffffff;border:1px solid #666" onclick="setStroke('#ffffff',this)"></div>
+      </div>
+    </div>
+
+    <!-- DOC INFO -->
+    <div>
+      <div class="rpt">Document</div>
+      <div class="ir"><span>Pages</span><span id="iPgs">—</span></div>
+      <div class="ir"><span>Current</span><span id="iCur">—</span></div>
+      <div class="ir"><span>Zoom</span><span id="iZoom">100%</span></div>
+      <div class="ir"><span>Tool</span><span id="iTool">select</span></div>
+      <div class="ir"><span>Elements</span><span id="iElems">0</span></div>
+    </div>
+
+    <!-- NAVIGATE -->
+    <div>
+      <div class="rpt">Navigate</div>
+      <div style="display:flex;gap:4px">
+        <button class="btn" onclick="gotoPage(curPage-1)" style="flex:1;justify-content:center">‹ Prev</button>
+        <button class="btn" onclick="gotoPage(curPage+1)" style="flex:1;justify-content:center">Next ›</button>
+      </div>
+      <div style="display:flex;gap:4px;margin-top:5px">
+        <input id="pgnum" type="number" min="1" placeholder="Pg" style="width:48px;background:var(--surf2);border:1px solid var(--bdr2);border-radius:5px;padding:4px 5px;color:var(--tx);font-size:11px;font-family:'DM Mono',monospace">
+        <button class="btn" onclick="gotoPage(+document.getElementById('pgnum').value)" style="flex:1;justify-content:center">Go</button>
+      </div>
+      <button class="btn" onclick="rotatePg()" style="width:100%;justify-content:center;margin-top:5px">⟳ Rotate</button>
+    </div>
+
+    <!-- UNDO/CLEAR -->
+    <div style="display:flex;gap:4px">
+      <button class="btn" onclick="undoLast()" style="flex:1;justify-content:center">↩ Undo</button>
+      <button class="btn" onclick="clearPage()" style="flex:1;justify-content:center">🗑 Clear</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- STATUSBAR -->
+<div class="sb">
+  <span><span class="sbd"></span><span id="sbl">Ready — open a PDF to begin</span></span>
+  <span id="sbm"></span>
+  <span>PDF Studio v2.0</span>
+</div>
+</div>
+
+<!-- SIGNATURE MODAL -->
+<div class="mbg" id="sigModal" style="display:none">
+  <div class="mbox">
+    <div class="mtit">✍ Draw your signature</div>
+    <canvas class="sigc" id="sigc" width="344" height="130"></canvas>
+    <div class="mact">
+      <button class="btn" onclick="clearSig()">Clear</button>
+      <button class="btn acc" onclick="applySig()">Add to page</button>
+      <button class="btn" onclick="closeSig()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── PDF.js ───
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ─── STATE ───
+let pdf=null, scale=1.4, curPage=1, totPages=0, rot=0, fname='';
+let tool='select', strokeClr='#e85d3a', selEl=null;
+let pageEls={};   // pageNum -> [elements]
+let undoStack=[];
+let drawing=false, dCtx=null, dCvs=null, lx=0, ly=0;
+let shapeState={on:false,el:null,sx:0,sy:0,layer:null,pg:0};
+
+// font state
+let ff='Arial', fs=18, fc='#000000', fB=false, fI=false, fU=false, fA='left';
+
+// ─── FILE OPEN ───
+function triggerOpen(){document.getElementById('fileInput').click();}
+function loadFile(inp){
+  const f=inp.files[0]; if(!f)return;
+  fname=f.name;
+  const r=new FileReader(); r.onload=e=>openPDF(e.target.result); r.readAsArrayBuffer(f); inp.value='';
+}
+function onDragOver(e){e.preventDefault();document.getElementById('dzb').classList.add('drag');}
+function onDragLeave(){document.getElementById('dzb').classList.remove('drag');}
+function onDrop(e){
+  e.preventDefault(); document.getElementById('dzb').classList.remove('drag');
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type==='application/pdf'){fname=f.name;const r=new FileReader();r.onload=ev=>openPDF(ev.target.result);r.readAsArrayBuffer(f);}
+  else toast('Please drop a PDF file');
+}
+
+async function openPDF(data){
+  document.getElementById('dz').style.display='none';
+  document.getElementById('lov').style.display='flex';
+  prog(10,'Parsing PDF…');
+  try{
+    const task=pdfjsLib.getDocument({data});
+    task.onProgress=p=>{if(p.total)prog(10+p.loaded/p.total*60,'Loading…');};
+    pdf=await task.promise;
+    totPages=pdf.numPages;
+    document.getElementById('fileName').textContent=fname;
+    document.getElementById('iPgs').textContent=totPages;
+    pageEls={};
+    prog(80,'Rendering pages…');
+    await renderAll();
+    prog(100,'Done');
+    setTimeout(()=>{document.getElementById('lov').style.display='none'; updateStatus();},300);
+  }catch(e){toast('Error: '+e.message);document.getElementById('lov').style.display='none';document.getElementById('dz').style.display='flex';}
+}
+function prog(p,msg){document.getElementById('pf').style.width=p+'%';document.getElementById('lt').textContent=msg;}
+
+// ─── RENDER PAGES ───
+async function renderAll(){
+  const cont=document.getElementById('pages'); cont.innerHTML='';
+  document.getElementById('thumbs').innerHTML='';
+  for(let i=1;i<=totPages;i++){
+    const page=await pdf.getPage(i);
+    const vp=page.getViewport({scale,rotation:rot});
+    if(!pageEls[i])pageEls[i]=[];
+
+    // wrapper
+    const wrap=document.createElement('div');
+    wrap.className='pw'; wrap.dataset.page=i;
+
+    // pdf canvas
+    const cv=document.createElement('canvas');
+    cv.width=vp.width; cv.height=vp.height;
+    await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+    wrap.appendChild(cv);
+
+    // draw canvas
+    const dc=document.createElement('canvas');
+    dc.className='dov'; dc.width=vp.width; dc.height=vp.height; dc.dataset.dcpg=i;
+    dc.style.width=vp.width+'px'; dc.style.height=vp.height+'px';
+    wrap.appendChild(dc);
+
+    // edit overlay
+    const eo=document.createElement('div');
+    eo.className='eov'; eo.dataset.eopg=i;
+    eo.style.width=vp.width+'px'; eo.style.height=vp.height+'px';
+    eo.style.position='absolute'; eo.style.top='0'; eo.style.left='0';
+    // re-attach saved elements
+    pageEls[i].forEach(el=>eo.appendChild(el));
+    wrap.appendChild(eo);
+
+    // click on PDF canvas
+    cv.addEventListener('click',e=>onPdfClick(e,i,vp,cv));
+    // draw events
+    dc.addEventListener('mousedown',e=>drawStart(e,i,dc));
+    dc.addEventListener('mousemove',e=>drawMove(e,dc));
+    dc.addEventListener('mouseup',()=>drawEnd());
+    // shape events on edit overlay
+    eo.addEventListener('mousedown',e=>shapeDown(e,i,eo));
+    eo.addEventListener('mousemove',e=>shapeMove(e,eo));
+    eo.addEventListener('mouseup',e=>shapeUp(e,eo));
+    // deselect on overlay bg click
+    eo.addEventListener('click',e=>{if(e.target===eo)deselAll();});
+
+    cont.appendChild(wrap);
+    await renderThumb(i);
+
+    // intersection observer
+    const obs=new IntersectionObserver(ens=>ens.forEach(en=>{
+      if(en.isIntersecting){curPage=+en.target.dataset.page;updateStatus();setThumbOn(curPage);}
+    }),{root:document.getElementById('viewer'),threshold:0.4});
+    obs.observe(wrap);
+  }
+  applyToolState();
+}
+
+async function renderThumb(n){
+  const page=await pdf.getPage(n);
+  const vp=page.getViewport({scale:0.2,rotation:rot});
+  const item=document.createElement('div');item.className='thi'+(n===1?' on':'');item.dataset.th=n;item.onclick=()=>gotoPage(n);
+  const tc=document.createElement('canvas');tc.className='thc';tc.width=vp.width;tc.height=vp.height;
+  await page.render({canvasContext:tc.getContext('2d'),viewport:vp}).promise;
+  const tn=document.createElement('div');tn.className='thn';tn.textContent=n;
+  item.appendChild(tc);item.appendChild(tn);
+  document.getElementById('thumbs').appendChild(item);
+}
+function setThumbOn(n){document.querySelectorAll('.thi').forEach(t=>t.classList.toggle('on',+t.dataset.th===n));}
+
+// ─── NAVIGATION ───
+function gotoPage(n){
+  if(!pdf)return; n=Math.max(1,Math.min(totPages,n)); curPage=n;
+  document.querySelector(`.pw[data-page="${n}"]`)?.scrollIntoView({behavior:'smooth',block:'start'});
+  updateStatus();
+}
+
+// ─── TOOL ───
+function setTool(name){
+  tool=name;
+  // clear all active states
+  document.querySelectorAll('.tbtn,.rt').forEach(b=>b.classList.remove('on'));
+  const tb=document.getElementById('tb'+name); if(tb)tb.classList.add('on');
+  const rt=document.getElementById('rt-'+name); if(rt)rt.classList.add('on');
+  document.getElementById('iTool').textContent=name;
+  // cursor on viewer
+  const cursors={text:'text',draw:'crosshair',shape:'crosshair',note:'cell',select:'default'};
+  document.getElementById('viewer').style.cursor=cursors[name]||'default';
+  applyToolState();
+  if(name==='text')toast('Click anywhere on the PDF page to add a text box');
+  if(name==='draw')toast('Click and drag on the page to draw freehand');
+  if(name==='shape')toast('Click and drag on the page to draw a rectangle');
+  if(name==='note')toast('Click anywhere on the PDF page to add a sticky note');
+}
+
+function applyToolState(){
+  // enable/disable draw canvas pointer events
+  document.querySelectorAll('.dov').forEach(c=>c.classList.toggle('can-draw',tool==='draw'));
+  // enable/disable edit overlay pointer events
+  document.querySelectorAll('.eov').forEach(e=>e.classList.toggle('can-click',['text','note','shape','select'].includes(tool)));
+}
+
+// ─── CLICK ON PDF ───
+function onPdfClick(e,pg,vp,cv){
+  if(tool==='text'){
+    const rect=cv.getBoundingClientRect();
+    // position in pixels relative to page
+    const px=(e.clientX-rect.left)*(vp.width/rect.width);
+    const py=(e.clientY-rect.top)*(vp.height/rect.height);
+    addText(pg,px,py);
+  } else if(tool==='note'){
+    const rect=cv.getBoundingClientRect();
+    const px=(e.clientX-rect.left)*(vp.width/rect.width);
+    const py=(e.clientY-rect.top)*(vp.height/rect.height);
+    addNote(pg,px,py);
+  }
+}
+
+// ════════════════════════════
+// ─── ADD TEXT ELEMENT ───
+// ════════════════════════════
+function addText(pg,px,py,initText){
+  const eo=document.querySelector(`[data-eopg="${pg}"]`); if(!eo)return;
+
+  const el=document.createElement('div');
+  el.className='tel';
+  el.style.left=px+'px';
+  el.style.top=py+'px';
+  el.style.width='200px';
+
+  const border=document.createElement('div'); border.className='tel-border';
+
+  // The actual editable area
+  const ta=document.createElement('textarea');
+  ta.className='tel-content';
+  ta.value=initText||'Type your text here';
+  ta.rows=1;
+  ta.spellcheck=false;
+  applyStyle(ta);
+
+  // Auto-grow textarea
+  ta.addEventListener('input',()=>{
+    ta.style.height='auto';
+    ta.style.height=ta.scrollHeight+'px';
+  });
+  ta.addEventListener('mousedown',e=>e.stopPropagation());
+  ta.addEventListener('click',e=>{ e.stopPropagation(); selElement(el,'text'); ta.focus(); });
+  ta.addEventListener('focus',()=>selElement(el,'text'));
+
+  // Delete button
+  const delb=document.createElement('button'); delb.className='tel-del'; delb.textContent='×';
+  delb.addEventListener('click',e=>{e.stopPropagation(); removeEl(el,pg);});
+
+  // Resize handle
+  const rh=document.createElement('div'); rh.className='tel-rh';
+  rh.addEventListener('mousedown',e=>startResize(e,el));
+
+  border.appendChild(ta);
+  el.appendChild(border);
+  el.appendChild(delb);
+  el.appendChild(rh);
+
+  eo.appendChild(el);
+  makeDraggable(el,ta);
+
+  el.addEventListener('click',e=>{e.stopPropagation(); selElement(el,'text');});
+
+  pageEls[pg]=pageEls[pg]||[]; pageEls[pg].push(el);
+  undoStack.push({el,parent:eo,pg});
+
+  // select and focus
+  selElement(el,'text');
+  setTimeout(()=>{
+    ta.focus();
+    ta.select();
+    ta.style.height='auto';
+    ta.style.height=ta.scrollHeight+'px';
+  },50);
+
+  updateLayers(); updateStatus();
+  toast('Text box added! Click inside to type, drag border to move');
+}
+
+function applyStyle(ta){
+  ta.style.fontFamily=ff;
+  ta.style.fontSize=fs+'px';
+  ta.style.color=fc;
+  ta.style.fontWeight=fB?'bold':'normal';
+  ta.style.fontStyle=fI?'italic':'normal';
+  ta.style.textDecoration=fU?'underline':'none';
+  ta.style.textAlign=fA;
+}
+
+// ─── FORMAT APPLY ───
+function applyFmt(){
+  // read from whichever control changed
+  ff=document.getElementById('fcfont').value||document.getElementById('rpfont').value||'Arial';
+  fs=+document.getElementById('fcsize').value||+document.getElementById('rpsize').value||18;
+  fc=document.getElementById('fcclr').value||document.getElementById('rpclr').value||'#000000';
+  // sync all controls
+  ['fcfont','rpfont'].forEach(id=>document.getElementById(id).value=ff);
+  ['fcsize','rpsize'].forEach(id=>document.getElementById(id).value=fs);
+  ['fcclr','rpclr'].forEach(id=>document.getElementById(id).value=fc);
+  // apply to selected element
+  if(selEl&&selEl.classList.contains('tel')){
+    const ta=selEl.querySelector('.tel-content');
+    if(ta){ applyStyle(ta); ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; }
+  }
+}
+
+function toggleFmt(t){
+  if(t==='B'){fB=!fB; ['fcB','rpB'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle('on',fB)});}
+  if(t==='I'){fI=!fI; ['fcI','rpI'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle('on',fI)});}
+  if(t==='U'){fU=!fU; ['fcU','rpU'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle('on',fU)});}
+  applyFmt();
+}
+
+function setAlign(a){
+  fA=a;
+  ['rpAL','rpAC','rpAR'].forEach(id=>document.getElementById(id)?.classList.remove('on'));
+  document.getElementById('rpA'+a.charAt(0).toUpperCase())?.classList.add('on');
+  applyFmt();
+}
+
+// ─── SYNC FONT CONTROLS FROM SELECTED ELEMENT ───
+function syncFontControls(ta){
+  if(!ta)return;
+  ff=ta.style.fontFamily||'Arial';
+  fs=parseInt(ta.style.fontSize)||18;
+  fc=rgb2hex(ta.style.color)||'#000000';
+  ['fcfont','rpfont'].forEach(id=>document.getElementById(id).value=ff);
+  ['fcsize','rpsize'].forEach(id=>document.getElementById(id).value=fs);
+  ['fcclr','rpclr'].forEach(id=>document.getElementById(id).value=fc);
+  fB=ta.style.fontWeight==='bold';
+  fI=ta.style.fontStyle==='italic';
+  fU=ta.style.textDecoration.includes('underline');
+  ['fcB','rpB'].forEach(id=>document.getElementById(id)?.classList.toggle('on',fB));
+  ['fcI','rpI'].forEach(id=>document.getElementById(id)?.classList.toggle('on',fI));
+  ['fcU','rpU'].forEach(id=>document.getElementById(id)?.classList.toggle('on',fU));
+}
+
+// ─── IMAGE INSERT ───
+function insertImgFile(inp){
+  const f=inp.files[0]; if(!f)return;
+  const r=new FileReader(); r.onload=e=>insertImg(e.target.result,curPage); r.readAsDataURL(f); inp.value='';
+}
+function insertImg(src,pg){
+  const eo=document.querySelector(`[data-eopg="${pg}"]`); if(!eo)return;
+  const el=document.createElement('div'); el.className='iel';
+  el.style.left='10%'; el.style.top='10%'; el.style.width='180px'; el.style.height='130px';
+  const img=document.createElement('img'); img.src=src; img.draggable=false;
+  const delb=document.createElement('button'); delb.className='iel-del'; delb.textContent='×';
+  delb.addEventListener('click',e=>{e.stopPropagation();removeEl(el,pg);});
+  const rh=document.createElement('div'); rh.className='iel-rh';
+  rh.addEventListener('mousedown',e=>startResize(e,el));
+  el.appendChild(img); el.appendChild(delb); el.appendChild(rh);
+  eo.appendChild(el);
+  makeDraggable(el);
+  el.addEventListener('click',e=>{e.stopPropagation();selElement(el,'img');});
+  pageEls[pg]=pageEls[pg]||[]; pageEls[pg].push(el);
+  undoStack.push({el,parent:eo,pg});
+  selElement(el,'img');
+  updateLayers(); updateStatus();
+  toast('Image inserted — drag to move, resize from corner');
+}
+
+// ─── SHAPES ───
+function shapeDown(e,pg,layer){
+  if(tool!=='shape')return;
+  e.stopPropagation();
+  const rect=layer.getBoundingClientRect();
+  shapeState.on=true; shapeState.sx=e.clientX-rect.left; shapeState.sy=e.clientY-rect.top;
+  shapeState.layer=layer; shapeState.pg=pg;
+  const el=document.createElement('div'); el.className='shel';
+  el.style.left=shapeState.sx+'px'; el.style.top=shapeState.sy+'px';
+  el.style.width='2px'; el.style.height='2px';
+  el.style.border=`2px solid ${strokeClr}`; el.style.borderRadius='3px';
+  const delb=document.createElement('button'); delb.className='shel-del'; delb.textContent='×';
+  delb.addEventListener('click',ev=>{ev.stopPropagation();removeEl(el,pg);});
+  const rh=document.createElement('div'); rh.className='shel-rh';
+  rh.addEventListener('mousedown',ev=>startResize(ev,el));
+  el.appendChild(delb); el.appendChild(rh);
+  layer.appendChild(el); shapeState.el=el;
+}
+function shapeMove(e,layer){
+  if(!shapeState.on||!shapeState.el)return;
+  const rect=layer.getBoundingClientRect();
+  const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+  const w=Math.abs(cx-shapeState.sx), h=Math.abs(cy-shapeState.sy);
+  shapeState.el.style.left=Math.min(cx,shapeState.sx)+'px';
+  shapeState.el.style.top=Math.min(cy,shapeState.sy)+'px';
+  shapeState.el.style.width=w+'px'; shapeState.el.style.height=h+'px';
+}
+function shapeUp(e,layer){
+  if(!shapeState.on||!shapeState.el)return;
+  const el=shapeState.el, pg=shapeState.pg;
+  shapeState.on=false;
+  makeDraggable(el);
+  el.addEventListener('click',ev=>{ev.stopPropagation();selElement(el,'shape');});
+  pageEls[pg]=pageEls[pg]||[]; pageEls[pg].push(el);
+  undoStack.push({el,parent:layer,pg});
+  selElement(el,'shape');
+  updateLayers(); updateStatus();
+  shapeState.el=null;
+}
+
+// ─── FREEHAND DRAW ───
+function drawStart(e,pg,dc){
+  if(tool!=='draw')return;
+  drawing=true; dCvs=dc; dCtx=dc.getContext('2d');
+  const r=e.target.getBoundingClientRect();
+  const sx=dc.width/r.width, sy=dc.height/r.height;
+  lx=(e.clientX-r.left)*sx; ly=(e.clientY-r.top)*sy;
+  dCtx.strokeStyle=strokeClr; dCtx.lineWidth=2.5; dCtx.lineCap='round'; dCtx.lineJoin='round'; dCtx.globalAlpha=0.9;
+  dCtx.beginPath(); dCtx.moveTo(lx,ly);
+}
+function drawMove(e,dc){
+  if(!drawing||dCvs!==dc)return;
+  const r=dc.getBoundingClientRect();
+  const sx=dc.width/r.width, sy=dc.height/r.height;
+  const x=(e.clientX-r.left)*sx, y=(e.clientY-r.top)*sy;
+  dCtx.lineTo(x,y); dCtx.stroke(); lx=x; ly=y;
+}
+function drawEnd(){drawing=false; if(dCtx){dCtx.globalAlpha=1; dCtx.closePath();}}
+
+// ─── STICKY NOTE ───
+function addNote(pg,px,py){
+  const eo=document.querySelector(`[data-eopg="${pg}"]`); if(!eo)return;
+  const el=document.createElement('div'); el.className='sn';
+  el.style.left=px+'px'; el.style.top=py+'px';
+  const x=document.createElement('button'); x.className='sn-x'; x.textContent='×';
+  x.onclick=()=>{el.remove(); removeFromPE(pg,el);};
+  const ta=document.createElement('textarea'); ta.rows=3; ta.placeholder='Type note…';
+  ta.addEventListener('mousedown',e=>e.stopPropagation());
+  el.appendChild(x); el.appendChild(ta);
+  eo.appendChild(el);
+  makeDraggable(el,'textarea');
+  ta.focus();
+  pageEls[pg]=pageEls[pg]||[]; pageEls[pg].push(el);
+  undoStack.push({el,parent:eo,pg});
+  updateLayers(); updateStatus();
+}
+
+// ─── SELECTION ───
+function selElement(el,type){
+  deselAll();
+  selEl=el; el.classList.add('sel');
+  if(type==='text') syncFontControls(el.querySelector('.tel-content'));
+}
+function deselAll(){
+  document.querySelectorAll('.tel.sel,.iel.sel,.shel.sel').forEach(e=>e.classList.remove('sel'));
+  selEl=null;
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.tel')&&!e.target.closest('.iel')&&!e.target.closest('.shel')&&!e.target.closest('.rp'))deselAll();
+});
+
+// ─── DRAG ───
+function makeDraggable(el,excludeEl){
+  let ox=0,oy=0,sx=0,sy=0,on=false;
+  el.addEventListener('mousedown',e=>{
+    if(excludeEl&&(e.target===excludeEl||excludeEl.contains(e.target)))return;
+    if(e.target.classList.contains('tel-del')||e.target.classList.contains('iel-del')||e.target.classList.contains('shel-del'))return;
+    if(e.target.classList.contains('tel-rh')||e.target.classList.contains('iel-rh')||e.target.classList.contains('shel-rh'))return;
+    on=true; sx=e.clientX; sy=e.clientY; e.preventDefault();
+    const up=()=>{on=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+    const mv=ev=>{
+      if(!on)return; ox=sx-ev.clientX; oy=sy-ev.clientY; sx=ev.clientX; sy=ev.clientY;
+      const p=el.parentElement; const pr=p.getBoundingClientRect();
+      // convert % to px if needed
+      let lv=el.style.left, tv=el.style.top;
+      let lPx=lv.includes('%')?parseFloat(lv)/100*pr.width:parseFloat(lv);
+      let tPx=tv.includes('%')?parseFloat(tv)/100*pr.height:parseFloat(tv);
+      el.style.left=(lPx-ox)+'px'; el.style.top=(tPx-oy)+'px';
+    };
+    document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
+  });
+}
+
+function startResize(e,el){
+  e.stopPropagation(); e.preventDefault();
+  const sw=el.offsetWidth, sh=el.offsetHeight, sx=e.clientX, sy=e.clientY;
+  const mv=ev=>{
+    el.style.width=Math.max(50,sw+(ev.clientX-sx))+'px';
+    el.style.height=Math.max(24,sh+(ev.clientY-sy))+'px';
+    // auto-grow textarea if present
+    const ta=el.querySelector('.tel-content');
+    if(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
+  };
+  const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+  document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
+}
+
+// ─── REMOVE / UNDO ───
+function removeEl(el,pg){el.remove(); removeFromPE(pg,el); updateLayers(); updateStatus();}
+function removeFromPE(pg,el){if(pageEls[pg])pageEls[pg]=pageEls[pg].filter(e=>e!==el);}
+function undoLast(){
+  if(!undoStack.length){toast('Nothing to undo');return;}
+  const {el,parent,pg}=undoStack.pop(); el.remove();
+  if(pg&&pageEls[pg])pageEls[pg]=pageEls[pg].filter(e=>e!==el);
+  updateLayers(); updateStatus(); toast('Undone');
+}
+function clearPage(){
+  if(!pdf)return;
+  const eo=document.querySelector(`[data-eopg="${curPage}"]`); if(!eo)return;
+  pageEls[curPage]=[]; eo.innerHTML=''; updateLayers(); updateStatus(); toast('Page cleared');
+}
+
+// ─── LAYERS PANEL ───
+function updateLayers(){
+  const list=document.getElementById('laylist'); if(!list)return;
+  const els=pageEls[curPage]||[];
+  document.getElementById('iElems').textContent=Object.values(pageEls).flat().length;
+  list.innerHTML='';
+  els.forEach((el,i)=>{
+    const row=document.createElement('div'); row.className='lr';
+    let type='Element';
+    if(el.classList.contains('tel'))type='✏ Text';
+    else if(el.classList.contains('iel'))type='🖼 Image';
+    else if(el.classList.contains('shel'))type='⬜ Shape';
+    else if(el.classList.contains('sn'))type='💬 Note';
+    const lb=document.createElement('span'); lb.textContent=type+' '+(i+1);
+    const xb=document.createElement('button'); xb.className='lx'; xb.textContent='×';
+    xb.onclick=()=>removeEl(el,curPage);
+    row.onclick=()=>el.scrollIntoView({behavior:'smooth',block:'center'});
+    row.appendChild(lb); row.appendChild(xb); list.appendChild(row);
+  });
+  if(!els.length)list.innerHTML='<div style="font-size:10px;color:var(--tx3)">No elements on this page</div>';
+}
+
+// ─── STROKE COLOR ───
+function setStroke(c,dot){strokeClr=c; document.querySelectorAll('.cd').forEach(d=>d.classList.remove('on')); dot.classList.add('on');}
+
+// ─── ZOOM ───
+function doZoom(d){
+  scale=Math.max(0.4,Math.min(3.0,scale+d));
+  const pct=Math.round(scale/1.4*100)+'%';
+  document.getElementById('zmval').textContent=pct;
+  document.getElementById('iZoom').textContent=pct;
+  if(pdf)renderAll();
+}
+
+// ─── ROTATE ───
+function rotatePg(){rot=(rot+90)%360; if(pdf)renderAll(); toast('Rotated to '+rot+'°');}
+
+// ─── SEARCH ───
+function doSearch(q){
+  const out=document.getElementById('sresults'); if(!q||!pdf){out.innerHTML='';return;}
+  out.innerHTML='<div style="font-size:10px;color:var(--tx2)">Searching…</div>';
+  const ps=[];
+  for(let i=1;i<=totPages;i++)ps.push(pdf.getPage(i).then(p=>p.getTextContent().then(tc=>{
+    const txt=tc.items.map(t=>t.str).join(' ');
+    const n=(txt.match(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'))||[]).length;
+    return{page:i,n};
+  })));
+  Promise.all(ps).then(res=>{
+    const found=res.filter(r=>r.n>0);
+    if(!found.length){out.innerHTML='<div style="font-size:10px;color:var(--tx2)">No results</div>';return;}
+    out.innerHTML=found.map(r=>`<div class="sres" onclick="gotoPage(${r.page})">Page ${r.page} <span style="color:var(--acc)">(${r.n})</span></div>`).join('');
+  });
+}
+
+// ─── SIDEBAR TABS ───
+function setSTab(name,el){
+  document.querySelectorAll('.stab').forEach(t=>t.classList.remove('on')); el.classList.add('on');
+  document.querySelectorAll('.tp').forEach(p=>p.classList.remove('on'));
+  document.getElementById('tp-'+name).classList.add('on');
+  if(name==='layers')updateLayers();
+}
+
+// ─── SIGNATURE ───
+let sigOn=false, sigCtx;
+function openSig(){
+  if(!pdf)return toast('Open a PDF first');
+  document.getElementById('sigModal').style.display='flex';
+  const c=document.getElementById('sigc'); sigCtx=c.getContext('2d'); clearSig();
+  c.onmousedown=e=>{sigOn=true;const r=c.getBoundingClientRect();sigCtx.beginPath();sigCtx.moveTo(e.clientX-r.left,e.clientY-r.top);sigCtx.strokeStyle='#1a1a2e';sigCtx.lineWidth=2.5;sigCtx.lineCap='round';};
+  c.onmousemove=e=>{if(!sigOn)return;const r=c.getBoundingClientRect();sigCtx.lineTo(e.clientX-r.left,e.clientY-r.top);sigCtx.stroke();};
+  c.onmouseup=c.onmouseleave=()=>sigOn=false;
+}
+function clearSig(){sigCtx.clearRect(0,0,344,130);sigCtx.fillStyle='#fff';sigCtx.fillRect(0,0,344,130);sigCtx.strokeStyle='#ddd';sigCtx.lineWidth=0.5;sigCtx.beginPath();sigCtx.moveTo(16,98);sigCtx.lineTo(328,98);sigCtx.stroke();}
+function closeSig(){document.getElementById('sigModal').style.display='none';}
+function applySig(){insertImg(document.getElementById('sigc').toDataURL(),curPage);closeSig();toast('Signature placed — drag to position');}
+
+// ─── DOWNLOAD ───
+async function downloadEdited(){
+  if(!pdf)return toast('No PDF open');
+  toast('Preparing download…');
+  try{
+    let html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#555;padding:16px}.page{display:block;margin:0 auto 16px;max-width:100%}@media print{body{background:#fff;padding:0}.page{margin:0;page-break-after:always}}</style></head><body>';
+    const wps=document.querySelectorAll('.pw');
+    for(const wp of wps){
+      const pdfCv=wp.querySelector('canvas:not(.dov)');
+      const drawCv=wp.querySelector('.dov');
+      const eo=wp.querySelector('.eov');
+      const merged=document.createElement('canvas');
+      merged.width=pdfCv.width; merged.height=pdfCv.height;
+      const mctx=merged.getContext('2d');
+      mctx.drawImage(pdfCv,0,0);
+      mctx.drawImage(drawCv,0,0);
+      // render text elements
+      const tels=eo.querySelectorAll('.tel');
+      for(const tel of tels){
+        const ta=tel.querySelector('.tel-content');
+        if(!ta)continue;
+        const r=tel.getBoundingClientRect(), lr=eo.getBoundingClientRect();
+        const sx=(r.left-lr.left)/lr.width*merged.width;
+        const sy=(r.top-lr.top)/lr.height*merged.height;
+        const sw=r.width/lr.width*merged.width;
+        const lh=parseFloat(ta.style.fontSize)||18;
+        mctx.font=`${ta.style.fontWeight||''} ${ta.style.fontStyle||''} ${ta.style.fontSize||'18px'} ${ta.style.fontFamily||'Arial'}`;
+        mctx.fillStyle=ta.style.color||'#000';
+        mctx.textAlign=ta.style.textAlign||'left';
+        const lines=ta.value.split('\n');
+        lines.forEach((line,i)=>mctx.fillText(line,sx,sy+lh*(i+1)));
+      }
+      // render images
+      const iels=eo.querySelectorAll('.iel');
+      for(const iel of iels){
+        const img=iel.querySelector('img'); if(!img)continue;
+        const r=iel.getBoundingClientRect(), lr=eo.getBoundingClientRect();
+        const sx=(r.left-lr.left)/lr.width*merged.width;
+        const sy=(r.top-lr.top)/lr.height*merged.height;
+        const sw=r.width/lr.width*merged.width;
+        const sh=r.height/lr.height*merged.height;
+        try{mctx.drawImage(img,sx,sy,sw,sh);}catch(e){}
+      }
+      // render shapes
+      const shels=eo.querySelectorAll('.shel');
+      for(const shel of shels){
+        const r=shel.getBoundingClientRect(), lr=eo.getBoundingClientRect();
+        const sx=(r.left-lr.left)/lr.width*merged.width;
+        const sy=(r.top-lr.top)/lr.height*merged.height;
+        const sw=r.width/lr.width*merged.width;
+        const sh=r.height/lr.height*merged.height;
+        mctx.strokeStyle=shel.style.borderColor||'#000';
+        mctx.lineWidth=2; mctx.strokeRect(sx,sy,sw,sh);
+      }
+      const dataUrl=merged.toDataURL('image/jpeg',0.95);
+      html+=`<img class="page" src="${dataUrl}" style="width:${pdfCv.width}px">`;
+    }
+    html+='</body></html>';
+    const blob=new Blob([html],{type:'text/html'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download=(fname.replace('.pdf','')||'document')+'-edited.html'; a.click();
+    toast('Downloaded! Open the file → Print → Save as PDF');
+  }catch(e){toast('Error: '+e.message);}
+}
+
+function printPDF(){if(!pdf)return toast('No PDF open');window.print();}
+
+// ─── STATUS ───
+function updateStatus(){
+  if(!pdf)return;
+  document.getElementById('sbl').textContent=`Page ${curPage} of ${totPages}`;
+  document.getElementById('sbm').textContent=fname;
+  document.getElementById('iCur').textContent=curPage;
+  document.getElementById('iElems').textContent=Object.values(pageEls).flat().length;
+}
+
+// ─── HELPERS ───
+function rgb2hex(rgb){
+  if(!rgb)return'#000000'; if(rgb.startsWith('#'))return rgb;
+  const m=rgb.match(/\d+/g); if(!m||m.length<3)return'#000000';
+  return'#'+m.slice(0,3).map(v=>(+v).toString(16).padStart(2,'0')).join('');
+}
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ─── SAMPLE PDF ───
+async function loadSample(){
+  document.getElementById('dz').style.display='none';
+  document.getElementById('lov').style.display='flex'; prog(20,'Loading sample…');
+  try{
+    const r=await fetch('https://raw.githubusercontent.com/mozilla/pdf.js/master/web/compressed.tracemonkey-pldi-09.pdf').catch(()=>null);
+    if(r&&r.ok){const buf=await r.arrayBuffer();fname='sample.pdf';openPDF(buf);}
+    else{fname='demo.pdf';openPDF(makeSample());}
+  }catch{fname='demo.pdf';openPDF(makeSample());}
+}
+function makeSample(){
+  const body=`BT /F1 22 Tf 60 790 Td (PDF Studio - Document Editor) Tj
+/F1 12 Tf 0 -40 Td (HOW TO USE THE TEXT EDITOR:) Tj
+0 -24 Td (1. Click the "Add Text" button in the toolbar) Tj
+0 -20 Td (2. Click anywhere on this page) Tj
+0 -20 Td (3. A text box will appear - start typing!) Tj
+0 -20 Td (4. Select font, size and color from toolbar) Tj
+0 -20 Td (5. Drag the text box to move it) Tj
+0 -20 Td (6. Resize from the orange corner handle) Tj
+0 -20 Td (7. Click x button to delete a text box) Tj
+0 -34 Td (OTHER TOOLS:) Tj
+0 -22 Td (- Draw: freehand drawing on the page) Tj
+0 -20 Td (- Shape: draw rectangles) Tj
+0 -20 Td (- Image: insert photos or logos) Tj
+0 -20 Td (- Sign: draw and place your signature) Tj
+0 -20 Td (- Note: add sticky notes) Tj
+0 -34 Td (SAVING:) Tj
+0 -20 Td (Click Download to save as HTML file.) Tj
+0 -18 Td (Then open it and print to save as PDF.) Tj ET`;
+  const bl=body.length;
+  const pdf=`%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>\nendobj\n4 0 obj<</Length ${bl}>>\nstream\n${body}\nendstream endobj\n5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\nxref\n0 6\n0000000000 65535 f\n0000000009 00000 n\n0000000058 00000 n\n0000000115 00000 n\n0000000266 00000 n\n0000000400 00000 n\ntrailer<</Size 6/Root 1 0 R>>\nstartxref\n600\n%%EOF`;
+  const b=new Uint8Array(pdf.length); for(let i=0;i<pdf.length;i++)b[i]=pdf.charCodeAt(i); return b.buffer;
+}
+</script>
+</body>
+</html>
